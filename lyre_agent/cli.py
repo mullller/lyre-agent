@@ -44,6 +44,53 @@ def build_parser() -> argparse.ArgumentParser:
     chat.add_argument("--no-banner", action="store_true", help="do not render startup TUI")
     chat.add_argument("--quiet", action="store_true", help="suppress banner")
     chat.add_argument("--cwd", default=None, help="working directory")
+
+    # ── remote subcommand ───────────────────────────────────────────────
+    remote = sub.add_parser("remote", help="manage remote Lyre Agent hosts")
+    remote_sub = remote.add_subparsers(dest="remote_command")
+
+    # remote add
+    remote_add = remote_sub.add_parser("add", help="add a remote host")
+    remote_add.add_argument("name", help="alias for the remote host")
+    remote_add.add_argument("--host", required=True, help="hostname or IP")
+    remote_add.add_argument("--user", default="root", help="SSH user (default: root)")
+    remote_add.add_argument("--port", type=int, default=22, help="SSH port (default: 22)")
+    remote_add.add_argument("--description", default="", help="human-friendly description")
+
+    # remote remove
+    remote_rm = remote_sub.add_parser("remove", help="remove a remote host")
+    remote_rm.add_argument("name", help="alias of the remote to remove")
+
+    # remote list
+    remote_sub.add_parser("list", help="list configured remote hosts")
+
+    # remote test
+    remote_test = remote_sub.add_parser("test", help="test SSH connectivity to a remote host")
+    remote_test.add_argument("name", help="alias of the remote to test")
+
+    # remote run
+    remote_run = remote_sub.add_parser("run", help="run a one-shot task on a remote host")
+    remote_run.add_argument("name", help="alias of the remote host")
+    remote_run.add_argument("prompt", nargs="+", help="task prompt")
+    remote_run.add_argument("--cwd", default=".", help="working directory on remote")
+
+    # remote chat
+    remote_chat = remote_sub.add_parser("chat", help="start interactive chat on a remote host")
+    remote_chat.add_argument("name", help="alias of the remote host")
+    remote_chat.add_argument("--cwd", default=".", help="working directory on remote")
+
+    # remote config-show
+    remote_config = remote_sub.add_parser("config-show", help="show remote host config")
+    remote_config.add_argument("name", help="alias of the remote host")
+
+    # remote model-show
+    remote_model = remote_sub.add_parser("model-show", help="show remote host active model")
+    remote_model.add_argument("name", help="alias of the remote host")
+
+    # remote tool-list
+    remote_tools = remote_sub.add_parser("tool-list", help="list tools on remote host")
+    remote_tools.add_argument("name", help="alias of the remote host")
+
     return parser
 
 
@@ -68,12 +115,12 @@ def _print_model(config_path: str | None = None) -> None:
 
 def _list_models() -> None:
     for preset in list_model_presets():
-        print(f"{preset.alias}\t{preset.provider}\t{preset.name}\t{preset.description}")
+        print(f"  {preset.alias:<30} {preset.description}")
 
 
-def _switch_model(args) -> int:
+def _switch_model(args) -> None:
     cfg = load_config(args.config)
-    apply_model_switch(
+    cfg = apply_model_switch(
         cfg,
         args.model,
         provider=args.provider,
@@ -82,93 +129,221 @@ def _switch_model(args) -> int:
         config_path=args.config,
     )
     _print_model(args.config)
-    return 0
 
 
-def _chat(cwd: str | None = None, show_banner: bool = True) -> int:
-    cfg = load_config()
-    registry = default_registry()
-    runtime = AgentRuntime(config=cfg, tools=registry)
-    state = build_startup_state(cfg, registry, cwd=cwd)
+def _list_tools() -> None:
+    for tool in default_registry().list():
+        print(f"  {tool.name}: {tool.description}")
 
-    if show_banner:
+
+def _run(args) -> None:
+    runtime = AgentRuntime()
+    workdir = args.cwd or os.getcwd()
+    result = runtime.run(" ".join(args.prompt), cwd=workdir)
+    print(result)
+
+
+def _chat(args) -> None:
+    quiet = args.quiet or os.environ.get("LYRE_NO_BANNER")
+    no_banner = args.no_banner or quiet
+    if not no_banner:
+        cfg = load_config()
+        state = build_startup_state(cfg, default_registry(), args.cwd)
         render_startup(state)
 
+    print("Lyre Agent chat — type /help for commands, /exit to quit.")
     while True:
         try:
-            prompt = input("lyre ❯ ").strip()
-        except EOFError:
-            print()
+            user_input = input("\n> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\nBye.")
             break
-        if not prompt:
-            continue
-        if prompt in {"exit", "quit", "/exit", "/quit", "/q"}:
-            break
-        if prompt == "/help":
-            _print_help()
-            continue
-        if prompt == "/status":
-            render_status(state)
-            continue
-        if prompt == "/model":
-            _print_model()
-            continue
-        if prompt == "/tools":
-            for tool in registry.list():
-                print(f"{tool.name}\t{tool.description}")
-            continue
-        if prompt == "/config":
-            print(json.dumps(cfg.to_dict(), ensure_ascii=False, indent=2))
-            continue
-        if prompt == "/clear":
-            os.system("cls" if os.name == "nt" else "clear")
+
+        if not user_input:
             continue
 
-        print_markdown(runtime.run(prompt, cwd=cwd))
-    return 0
+        if user_input.startswith("/"):
+            cmd_parts = user_input.split(maxsplit=1)
+            cmd = cmd_parts[0].lower()
+            if cmd == "/exit":
+                print("Bye.")
+                break
+            elif cmd == "/help":
+                _print_help()
+            elif cmd == "/model":
+                _print_model()
+            elif cmd == "/tools":
+                _list_tools()
+            elif cmd == "/config":
+                cfg = load_config()
+                print(json.dumps(cfg.to_dict(), ensure_ascii=False, indent=2))
+            elif cmd == "/status":
+                render_status()
+            elif cmd == "/clear":
+                os.system("clear" if os.name != "nt" else "cls")
+            else:
+                print(f"Unknown command: {cmd}. Type /help for available commands.")
+        else:
+            runtime = AgentRuntime()
+            workdir = args.cwd or os.getcwd()
+            result = runtime.run(user_input, cwd=workdir)
+            print(result)
 
 
-def main(argv: list[str] | None = None) -> int:
+# ── Remote command handlers ─────────────────────────────────────────────────
+
+
+def _remote_add(args) -> None:
+    from lyre_agent.remote import remote_add
+
+    remote = remote_add(
+        name=args.name,
+        host=args.host,
+        user=args.user,
+        port=args.port,
+        description=args.description,
+    )
+    print(json.dumps(remote.to_dict(), ensure_ascii=False, indent=2))
+    print(f"✓ Remote '{args.name}' added.")
+
+
+def _remote_remove(args) -> None:
+    from lyre_agent.remote import remote_remove
+
+    if remote_remove(args.name):
+        print(f"✓ Remote '{args.name}' removed.")
+    else:
+        print(f"Remote '{args.name}' not found.", file=sys.stderr)
+        sys.exit(1)
+
+
+def _remote_list(args) -> None:
+    from lyre_agent.remote import remote_list
+
+    cfg = remote_list()
+    if not cfg.remotes:
+        print("No remote hosts configured. Use 'lyre-agent remote add' to add one.")
+        return
+    for name, host in cfg.remotes.items():
+        desc = f" — {host.description}" if host.description else ""
+        print(f"  {name}: {host.user}@{host.host}:{host.port}{desc}")
+
+
+def _remote_test(args) -> None:
+    from lyre_agent.remote import remote_test
+
+    ok, msg = remote_test(args.name)
+    if ok:
+        print(f"✓ Remote '{args.name}' is reachable.")
+    else:
+        print(f"✗ Remote '{args.name}' test failed: {msg}", file=sys.stderr)
+        sys.exit(1)
+
+
+def _remote_run(args) -> None:
+    from lyre_agent.remote import remote_run
+
+    prompt = " ".join(args.prompt)
+    exit_code, stdout, stderr = remote_run(args.name, prompt, cwd=args.cwd)
+    if stdout:
+        print(stdout)
+    if stderr:
+        print(stderr, file=sys.stderr)
+    if exit_code != 0:
+        sys.exit(exit_code)
+
+
+def _remote_chat(args) -> None:
+    from lyre_agent.remote import remote_chat
+
+    sys.exit(remote_chat(args.name, cwd=args.cwd))
+
+
+def _remote_config_show(args) -> None:
+    from lyre_agent.remote import remote_config_show
+
+    exit_code, stdout, stderr = remote_config_show(args.name)
+    if stdout:
+        print(stdout)
+    if stderr:
+        print(stderr, file=sys.stderr)
+    sys.exit(exit_code)
+
+
+def _remote_model_show(args) -> None:
+    from lyre_agent.remote import remote_model_show
+
+    exit_code, stdout, stderr = remote_model_show(args.name)
+    if stdout:
+        print(stdout)
+    if stderr:
+        print(stderr, file=sys.stderr)
+    sys.exit(exit_code)
+
+
+def _remote_tool_list(args) -> None:
+    from lyre_agent.remote import remote_tool_list
+
+    exit_code, stdout, stderr = remote_tool_list(args.name)
+    if stdout:
+        print(stdout)
+    if stderr:
+        print(stderr, file=sys.stderr)
+    sys.exit(exit_code)
+
+
+# ── Main ────────────────────────────────────────────────────────────────────
+
+
+def main() -> None:
     parser = build_parser()
-    args = parser.parse_args(argv)
-
-    if args.command is None:
-        return _chat(cwd=args.cwd, show_banner=not (args.quiet or args.no_banner))
+    args = parser.parse_args()
 
     if args.command == "version":
         print(f"lyre-agent {__version__}")
-        return 0
-    if args.command == "config-show":
-        print(json.dumps(load_config().to_dict(), ensure_ascii=False, indent=2))
-        return 0
-    if args.command == "tool-list":
-        for tool in default_registry().list():
-            print(f"{tool.name}\t{tool.description}")
-        return 0
-    if args.command == "model":
-        if args.model_command in {None, "show"}:
+    elif args.command == "config-show":
+        cfg = load_config()
+        print(json.dumps(cfg.to_dict(), ensure_ascii=False, indent=2))
+    elif args.command == "tool-list":
+        _list_tools()
+    elif args.command == "model":
+        if args.model_command == "show":
             _print_model()
-            return 0
-        if args.model_command == "list":
+        elif args.model_command == "list":
             _list_models()
-            return 0
-        if args.model_command == "switch":
-            return _switch_model(args)
-    if args.command == "run":
-        prompt = " ".join(args.prompt)
-        print(AgentRuntime().run(prompt, cwd=args.cwd))
-        return 0
-    if args.command == "chat":
-        show_banner = not (
-            getattr(args, "quiet", False)
-            or getattr(args, "no_banner", False)
-            or os.environ.get("LYRE_NO_BANNER") == "1"
-        )
-        return _chat(cwd=args.cwd, show_banner=show_banner)
-
-    parser.print_help()
-    return 0
+        elif args.model_command == "switch":
+            _switch_model(args)
+        else:
+            parser.parse_args(["model", "--help"])
+    elif args.command == "run":
+        _run(args)
+    elif args.command == "chat":
+        _chat(args)
+    elif args.command == "remote":
+        if args.remote_command == "add":
+            _remote_add(args)
+        elif args.remote_command == "remove":
+            _remote_remove(args)
+        elif args.remote_command == "list":
+            _remote_list(args)
+        elif args.remote_command == "test":
+            _remote_test(args)
+        elif args.remote_command == "run":
+            _remote_run(args)
+        elif args.remote_command == "chat":
+            _remote_chat(args)
+        elif args.remote_command == "config-show":
+            _remote_config_show(args)
+        elif args.remote_command == "model-show":
+            _remote_model_show(args)
+        elif args.remote_command == "tool-list":
+            _remote_tool_list(args)
+        else:
+            parser.parse_args(["remote", "--help"])
+    else:
+        # Default: interactive chat
+        _chat(args)
 
 
 if __name__ == "__main__":
-    raise SystemExit(main(sys.argv[1:]))
+    main()
