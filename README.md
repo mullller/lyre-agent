@@ -1,8 +1,12 @@
-```text
+<p align="center">
+  <img src="assets/logo.svg" alt="Lyre Agent" width="720">
+</p>
+
+<!-- Plain-text fallback:
 ╦  ╦ ╦ ╦═╗ ╔═
 ║  ╚╦╝ ╠╦╝ ╠═
 ╩═╝ ╩  ╩╚═ ╚═
-```
+-->
 
 # lyre-agent
 
