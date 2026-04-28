@@ -175,3 +175,102 @@ lyre-agent remote config-edit pi
 
 - Hermes Desktop 原文：https://m.aitntnews.com/newDetail.html?newId=24012
 - Lyre Agent 仓库：https://github.com/mullller/lyre-agent
+
+
+---
+
+## 竞品桌面客户端设计分析
+
+参考主流 AI Agent 桌面客户端的设计思路，提炼可借鉴的设计模式。
+
+### 1. CC Switch (54K ⭐, Rust + Tauri 2)
+
+**定位：** Claude Code / Codex / Gemini CLI / OpenCode / OpenClaw 的全能管理器。
+
+**核心设计：**
+- **多 Agent 统一管理**：一个桌面应用管理多个 CLI Agent
+- **跨平台**：Tauri 2 构建，Windows/macOS/Linux
+- **SSH 远程连接**：直接 SSH 到远程主机执行 Agent
+- **配置管理**：图形化切换模型、管理 API Key
+- **终端集成**：内嵌终端窗口，实时查看 Agent 输出
+
+**借鉴点：**
+- Tauri 2 是纯 CLI 工具升级桌面的最佳路径（轻量、跨平台）
+- 「管理器」定位而非「替代品」定位
+- 远程 SSH 连接作为一等公民
+
+### 2. UI-TARS Desktop (29K ⭐, 字节跳动)
+
+**定位：** 多模态 AI Agent 桌面应用，基于视觉模型控制 GUI。
+
+**核心设计：**
+- **本地 + 远程双模式**：Local Operator 和 Remote Operator
+- **Web UI + CLI 双入口**：不强制 GUI
+- **MCP 集成**：通过 Model Context Protocol 扩展能力
+- **视觉模型驱动**：截图理解桌面状态，直接操作 GUI
+
+**借鉴点：**
+- 「本地/远程」双模式是 Lyre Desktop 的核心场景
+- Web UI 作为可选入口降低门槛
+- 操作者可插拔架构（文件/Shell/浏览器操作者）
+
+### 3. Open Interpreter (63K ⭐)
+
+**定位：** 自然语言控制电脑，ChatGPT 式的代码解释器。
+
+**核心设计：**
+- **对话式交互**：类似 ChatGPT 的聊天界面
+- **本地执行**：在用户电脑上直接运行代码
+- **多语言支持**：Python/JavaScript/Shell
+- **安全确认**：高风险操作需要用户确认
+
+**借鉴点：**
+- 对话 + 执行结合的模式
+- 安全审批机制可复用 Lyre 的 `security.py` 命令分级
+
+### 4. Happy (19K ⭐, TypeScript)
+
+**定位：** Claude Code / Codex 的移动端和 Web 端客户端。
+
+**核心设计：**
+- **CLI 包装器**：`happy claude` 替代 `claude`，零侵入
+- **设备切换**：桌面和手机间无缝切换控制
+- **端到端加密**：数据安全优先
+- **推送通知**：Agent 需要权限或出错时通知用户
+
+**借鉴点：**
+- CLI 包装器模式非常优雅，不改原有命令
+- 设备间的会话迁移能力
+- 通知机制让异步 Agent 可用（提交任务后走开，完成时通知）
+
+### 5. Bytebot (11K ⭐, TypeScript)
+
+**定位：** AI 拥有自己的虚拟桌面，像人类一样操作电脑。
+
+**核心设计：**
+- **虚拟桌面环境**：AI 有独立的桌面、文件系统、浏览器
+- **全应用操作**：浏览器、邮件、Office、IDE 都能用
+- **Docker 部署**：自托管，数据可控
+- **Web UI**：通过浏览器访问和管理
+
+**借鉴点：**
+- 独立的 Agent 工作环境概念
+- Docker 部署使得环境可复制
+- Web UI 降低使用门槛
+
+### 设计模式总结
+
+| 模式 | 代表产品 | 适合 Lyre？ |
+|------|---------|-----------|
+| **管理器模式** | CC Switch | ✅ 最佳匹配 — 管理远程 CLI Agent |
+| **对话式执行** | Open Interpreter | ✅ Lyre 已有 chat 模式 |
+| **CLI 包装器** | Happy | ✅ 零侵入，不改原有工具 |
+| **虚拟桌面** | Bytebot | ❌ 过重，不符合 Lyre 极简哲学 |
+| **视觉 Agent** | UI-TARS | ❌ 需要视觉模型，不在 Lyre 路线图 |
+
+### 对 Lyre Desktop 的启示
+
+1. **CC Switch 的模式最值得借鉴**：Tauri 2 + SSH + 管理器定位
+2. **第一阶段先做 CLI 增强**（本文档已有设计），验证远程连接模式
+3. **第二阶段考虑 Tauri 2 桌面壳**，把 CLI 能力包装成图形界面
+4. **保持「管理器」定位**：Lyre Desktop 不替代 CLI，而是管理远程 Lyre 实例
