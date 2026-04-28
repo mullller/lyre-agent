@@ -14,6 +14,44 @@ python -m lyre_agent.cli run "查看当前目录文件" --cwd .
 python -m lyre_agent.cli chat
 ```
 
+## Startup TUI
+
+Interactive mode uses a Rich-powered startup TUI:
+
+```bash
+python -m lyre_agent.cli
+python -m lyre_agent.cli chat
+```
+
+It shows:
+
+- current profile
+- workspace
+- model provider/name
+- enabled tools
+- session status
+- safety mode
+- missing optional configuration warnings
+
+Use quiet mode for scripts or plain output:
+
+```bash
+python -m lyre_agent.cli --no-banner
+python -m lyre_agent.cli chat --quiet
+LYRE_NO_BANNER=1 python -m lyre_agent.cli chat
+```
+
+Interactive slash commands:
+
+```text
+/help      show commands
+/status    show runtime status
+/tools     list tools
+/config    print resolved config
+/clear     clear terminal
+/exit      quit
+```
+
 ## Design goals
 
 - Local-first: operate on the current workspace.
