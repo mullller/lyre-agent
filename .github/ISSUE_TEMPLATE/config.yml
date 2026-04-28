@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Maintenance workflow
+    url: https://github.com/mullller/lyre-agent/blob/master/docs/maintenance-workflow.md
+    about: Read the contribution and maintenance workflow before large changes.

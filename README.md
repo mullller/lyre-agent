@@ -430,6 +430,22 @@ Then all platforms share the same `AgentRuntime`.
 4. Add GitHub webhook/tooling adapter.
 5. Add optional MCP bridge.
 
+## Maintaining this repository
+
+Code changes should follow the repository maintenance workflow:
+
+- [Maintenance workflow](docs/maintenance-workflow.md)
+- [Pull request template](.github/pull_request_template.md)
+- [Issue templates](.github/ISSUE_TEMPLATE/)
+
+The short version:
+
+- use small branches and PRs for non-trivial changes
+- run compile and CLI smoke checks before opening PRs
+- keep secrets out of source, logs, docs and memory
+- preserve local-first behavior
+- prefer squash merge after verification
+
 ## Current MVP status
 
 Implemented:
