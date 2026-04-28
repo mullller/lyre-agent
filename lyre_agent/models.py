@@ -40,6 +40,22 @@ MODEL_PRESETS: dict[str, ModelPreset] = {
         api_key_env="OPENAI_API_KEY",
         description="Smaller OpenAI GPT-4.1 model.",
     ),
+    "anthropic:sonnet": ModelPreset(
+        alias="anthropic:sonnet",
+        provider="anthropic",
+        name="claude-sonnet-4-5",
+        base_url="https://api.anthropic.com",
+        api_key_env="ANTHROPIC_API_KEY",
+        description="Claude Sonnet via Anthropic Messages API.",
+    ),
+    "anthropic:haiku": ModelPreset(
+        alias="anthropic:haiku",
+        provider="anthropic",
+        name="claude-3-5-haiku-20241022",
+        base_url="https://api.anthropic.com",
+        api_key_env="ANTHROPIC_API_KEY",
+        description="Claude Haiku via Anthropic Messages API.",
+    ),
     "openrouter:sonnet": ModelPreset(
         alias="openrouter:sonnet",
         provider="openai-compatible",

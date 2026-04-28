@@ -25,6 +25,7 @@ def test_model_list(capsys):
     assert code == 0
     assert "echo" in captured.out
     assert "openai:gpt-4.1" in captured.out
+    assert "anthropic:sonnet" in captured.out
 
 
 def test_startup_state_contains_tools(tmp_path):

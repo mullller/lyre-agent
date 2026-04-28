@@ -103,7 +103,7 @@ For non-trivial work, write a short plan in the PR body or `docs/plans/`:
 ## Plan
 
 1. Add provider interface
-2. Add OpenAI-compatible implementation
+2. Add provider implementation, e.g. OpenAI-compatible or Anthropic Messages API
 3. Add tests with mocked HTTP responses
 4. Wire runtime to provider selection
 5. Update README
@@ -260,7 +260,7 @@ Recommended recurring maintenance:
 1. `paths.py` and profile-safe storage
 2. Hermes-style tool registry metadata
 3. `toolsets.py`
-4. OpenAI-compatible provider
+4. model providers: OpenAI-compatible and Anthropic Messages API
 5. real tool-calling loop
 6. prompt builder
 

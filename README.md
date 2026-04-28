@@ -49,6 +49,8 @@ Switch to a preset:
 python -m lyre_agent.cli model switch echo
 python -m lyre_agent.cli model switch openai:gpt-4.1
 python -m lyre_agent.cli model switch openai:gpt-4.1-mini
+python -m lyre_agent.cli model switch anthropic:sonnet
+python -m lyre_agent.cli model switch anthropic:haiku
 python -m lyre_agent.cli model switch openrouter:sonnet
 python -m lyre_agent.cli model switch local
 ```
@@ -62,6 +64,24 @@ python -m lyre_agent.cli model switch llama-3.1-70b \
   --api-key-env LYRE_LOCAL_API_KEY
 ```
 
+Switch to Anthropic Messages API, including third-party Anthropic-compatible gateways:
+
+```bash
+python -m lyre_agent.cli model switch claude-3-5-sonnet-20241022 \
+  --provider anthropic \
+  --base-url https://anthropic-gateway.example.com \
+  --api-key-env ANTHROPIC_GATEWAY_API_KEY
+```
+
+If the gateway already exposes a `/v1` base URL, pass it directly; Lyre Agent will call `/messages` under it:
+
+```bash
+python -m lyre_agent.cli model switch claude-3-5-sonnet-20241022 \
+  --provider anthropic \
+  --base-url https://anthropic-gateway.example.com/v1 \
+  --api-key-env ANTHROPIC_GATEWAY_API_KEY
+```
+
 Model config is written to:
 
 ```text
@@ -71,11 +91,18 @@ Model config is written to:
 Secrets stay outside config. Store API keys in environment variables, for example:
 
 ```bash
-export OPENAI_API_KEY=...
-export OPENROUTER_API_KEY=...
+export OPENAI_API_KEY=***
+export OPENROUTER_API_KEY=***
+export ANTHROPIC_API_KEY=***
+export ANTHROPIC_GATEWAY_API_KEY=***
 ```
 
-The first implemented real provider is OpenAI-compatible Chat Completions. Tool calling will be layered on top of this provider in the runtime phase.
+Implemented real providers:
+
+- OpenAI-compatible Chat Completions: `provider=openai-compatible`
+- Anthropic Messages API: `provider=anthropic`
+
+Tool calling will be layered on top of these providers in the runtime phase.
 
 ## Startup TUI
 
@@ -123,7 +150,7 @@ Interactive slash commands:
 - Tool-based: shell, file, git first; integrations later.
 - Safe by default: risky shell commands are classified before execution.
 - Small MVP: no required third-party dependencies yet.
-- Provider-agnostic: OpenAI-compatible providers first, local models later.
+- Provider-agnostic: OpenAI-compatible and Anthropic-compatible providers first, local models later.
 - Skill-driven: reusable workflows should be stored as markdown skills.
 
 ## Design Inspiration: Hermes + OpenClaw
@@ -183,7 +210,7 @@ Lyre Agent follows a small-core, tool-first architecture.
 The core runtime is responsible for:
 
 1. Building the conversation context from config, session, memory and skills.
-2. Calling an LLM provider with OpenAI-compatible tool schemas.
+2. Calling an LLM provider through provider-specific API adapters.
 3. Dispatching tool calls through a central registry.
 4. Appending normalized tool results back into the conversation.
 5. Repeating until the model returns a final answer.
@@ -286,7 +313,7 @@ The model should not pretend to operate on the system. All real actions should g
 
 ### 3. Provider-agnostic
 
-The runtime should not depend on a specific model SDK. Providers should implement a common interface. OpenAI-compatible tool calling is the first target because it covers OpenAI, OpenRouter, vLLM, LM Studio and many local gateways.
+The runtime should not depend on a specific model SDK. Providers should implement a common interface. The first provider targets are OpenAI-compatible Chat Completions and Anthropic Messages API because they cover OpenAI, Anthropic, OpenRouter, vLLM, LM Studio, Claude-compatible gateways and many local gateways.
 
 ### 4. Small core, pluggable edges
 
@@ -456,7 +483,7 @@ Then all platforms share the same `AgentRuntime`.
 1. Add `paths.py` and profile-safe storage.
 2. Refactor tool registry toward Hermes-style registration metadata.
 3. Add `toolsets.py` and config-based enable/disable.
-4. Implement OpenAI-compatible LLM provider.
+4. Implement OpenAI-compatible and Anthropic-compatible LLM providers.
 5. Replace shortcut runtime with a real tool-calling loop.
 6. Add prompt builder and context management.
 
