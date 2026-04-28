@@ -23,12 +23,13 @@ python -m lyre_agent.cli
 python -m lyre_agent.cli chat
 ```
 
-It renders a modern status card with:
+It renders a modern branded status card with:
 
+- colorful compact LYRE logo
 - current profile
 - workspace
 - model provider/name
-- enabled tool chips
+- vivid enabled tool chips
 - session status
 - safety mode
 - missing optional configuration warnings

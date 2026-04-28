@@ -48,13 +48,33 @@ def _compact_path(path: str) -> str:
 
 
 def _tool_chips(tools: list[str]) -> str:
-    return "  ".join(f"[black on green] {name} [/black on green]" for name in tools)
+    palette = ["bright_magenta", "bright_cyan", "bright_green", "yellow", "bright_blue", "bright_red"]
+    chips = []
+    for index, name in enumerate(tools):
+        color = palette[index % len(palette)]
+        chips.append(f"[black on {color}] {name} [/black on {color}]")
+    return "  ".join(chips)
+
+
+def _logo_text():
+    from rich.text import Text
+
+    lines = [
+        ("╦  ╦ ╦ ╦═╗ ╔═", "bold bright_magenta"),
+        ("║  ╚╦╝ ╠╦╝ ╠═", "bold bright_cyan"),
+        ("╩═╝ ╩  ╩╚═ ╚═", "bold bright_green"),
+    ]
+    logo = Text()
+    for idx, (line, style) in enumerate(lines):
+        logo.append(line, style=style)
+        if idx != len(lines) - 1:
+            logo.append("\n")
+    return logo
 
 
 def render_startup(state: StartupState) -> None:
     try:
         from rich import box
-        from rich.align import Align
         from rich.console import Console, Group
         from rich.panel import Panel
         from rich.table import Table
@@ -65,44 +85,43 @@ def render_startup(state: StartupState) -> None:
 
     console = Console()
 
-    title = Text.assemble(
-        ("♪ ", "bold magenta"),
-        ("Lyre", "bold white"),
-        (" Agent", "bold cyan"),
-        (f"  v{state.version}", "dim"),
+    brand = Table.grid(expand=True)
+    brand.add_column(ratio=1)
+    brand.add_row(_logo_text())
+    brand.add_row(
+        Text.assemble(
+            ("♪ Lyre Agent", "bold white"),
+            (f"  v{state.version}\n", "dim"),
+            ("local-first developer agent\n", "bright_cyan"),
+            ("tools that touch the real workspace", "dim"),
+        )
     )
-    subtitle = Text("local-first developer agent", style="dim")
 
     meta = Table.grid(expand=True)
     meta.add_column(ratio=1)
     meta.add_column(ratio=1)
     meta.add_row(
-        f"[cyan]Workspace[/cyan]\n[white]{_compact_path(state.workspace)}[/white]",
-        f"[cyan]Model[/cyan]\n[white]{state.model}[/white]",
+        f"[bright_magenta]Workspace[/bright_magenta]\n[white]{_compact_path(state.workspace)}[/white]",
+        f"[bright_cyan]Model[/bright_cyan]\n[white]{state.model}[/white]",
     )
     meta.add_row(
-        f"[cyan]Profile[/cyan]\n[white]{state.profile}[/white]",
-        f"[cyan]Session[/cyan]\n[white]{state.session}[/white]",
+        f"[bright_green]Profile[/bright_green]\n[white]{state.profile}[/white]",
+        f"[yellow]Session[/yellow]\n[white]{state.session}[/white]",
     )
     meta.add_row(
-        f"[cyan]Safety[/cyan]\n[green]{state.safety}[/green]",
-        f"[cyan]Tools[/cyan]\n{_tool_chips(state.tools)}",
+        f"[bright_blue]Safety[/bright_blue]\n[green]{state.safety}[/green]",
+        f"[bright_red]Tools[/bright_red]\n{_tool_chips(state.tools)}",
     )
 
-    body_items = [
-        Align.left(title),
-        Align.left(subtitle),
-        "",
-        meta,
-    ]
+    body_items = [brand, "", meta]
     if state.warnings:
         body_items.extend(["", "\n".join(f"[yellow]⚠ {warning}[/yellow]" for warning in state.warnings)])
 
     panel = Panel(
         Group(*body_items),
-        title="[dim]startup[/dim]",
+        title="[bold bright_magenta]lyre startup[/bold bright_magenta]",
         subtitle="[dim]/help commands · /status details · /exit quit[/dim]",
-        border_style="magenta",
+        border_style="bright_magenta",
         box=box.ROUNDED,
         padding=(1, 2),
     )
@@ -110,6 +129,7 @@ def render_startup(state: StartupState) -> None:
 
 
 def render_plain_startup(state: StartupState) -> None:
+    print("LYRE")
     print(f"♪ Lyre Agent v{state.version}")
     print("local-first developer agent\n")
     print(f"Workspace: {_compact_path(state.workspace)}")
@@ -134,7 +154,7 @@ def render_status(state: StartupState) -> None:
         return
 
     table = Table(show_header=False, box=None, pad_edge=False)
-    table.add_column("Field", style="cyan", no_wrap=True)
+    table.add_column("Field", style="bright_magenta", no_wrap=True)
     table.add_column("Value")
     table.add_row("Version", state.version)
     table.add_row("Profile", state.profile)
@@ -144,7 +164,9 @@ def render_status(state: StartupState) -> None:
     table.add_row("Session", state.session)
     table.add_row("Safety", state.safety)
     table.add_row("Warnings", ", ".join(state.warnings) if state.warnings else "none")
-    Console().print(Panel(table, title="[bold cyan]Lyre Status[/bold cyan]", border_style="cyan", box=box.ROUNDED))
+    Console().print(
+        Panel(table, title="[bold bright_cyan]Lyre Status[/bold bright_cyan]", border_style="bright_cyan", box=box.ROUNDED)
+    )
 
 
 def print_markdown(text: str) -> None:
