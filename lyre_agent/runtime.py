@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from lyre_agent.config import AgentConfig, load_config
-from lyre_agent.llm import EchoProvider
+from lyre_agent.llm import provider_from_config
 from lyre_agent.tools.registry import ToolRegistry, default_registry
 
 
@@ -9,7 +9,7 @@ class AgentRuntime:
     def __init__(self, config: AgentConfig | None = None, tools: ToolRegistry | None = None):
         self.config = config or load_config()
         self.tools = tools or default_registry()
-        self.llm = EchoProvider()
+        self.llm = provider_from_config(self.config.model)
 
     def run(self, prompt: str, cwd: str | None = None) -> str:
         """Run a single task.

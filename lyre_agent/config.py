@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 import json
 import os
@@ -41,12 +41,11 @@ class AgentConfig:
     max_iterations: int = 8
 
     def to_dict(self) -> dict:
-        return {
-            "model": self.model.__dict__,
-            "workspace": self.workspace.__dict__,
-            "tools": {"shell": self.tools.shell.__dict__},
-            "max_iterations": self.max_iterations,
-        }
+        return asdict(self)
+
+
+def get_config_path(path: str | None = None) -> Path:
+    return Path(path or os.environ.get("LYRE_AGENT_CONFIG", "~/.lyre-agent/config.json")).expanduser()
 
 
 def _merge_dataclass(obj, data: dict):
@@ -64,10 +63,17 @@ def _merge_dataclass(obj, data: dict):
 def load_config(path: str | None = None) -> AgentConfig:
     """Load config from JSON file. YAML can be added later without adding dependencies."""
     cfg = AgentConfig()
-    config_path = Path(path or os.environ.get("LYRE_AGENT_CONFIG", "~/.lyre-agent/config.json")).expanduser()
+    config_path = get_config_path(path)
     if not config_path.exists():
         return cfg
     data = json.loads(config_path.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
         raise ValueError("config root must be an object")
     return _merge_dataclass(cfg, data)
+
+
+def save_config(config: AgentConfig, path: str | None = None) -> Path:
+    config_path = get_config_path(path)
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(json.dumps(config.to_dict(), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return config_path

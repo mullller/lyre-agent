@@ -20,9 +20,62 @@ Local-first CLI agent for developer workflows.
 python -m lyre_agent.cli version
 python -m lyre_agent.cli config-show
 python -m lyre_agent.cli tool-list
+python -m lyre_agent.cli model show
+python -m lyre_agent.cli model list
+python -m lyre_agent.cli model switch openai:gpt-4.1-mini
 python -m lyre_agent.cli run "查看当前目录文件" --cwd .
 python -m lyre_agent.cli chat
 ```
+
+## Model switching
+
+Lyre Agent can switch models from the CLI, similar to `cc switch`-style workflows.
+
+Show the active model:
+
+```bash
+python -m lyre_agent.cli model show
+```
+
+List presets:
+
+```bash
+python -m lyre_agent.cli model list
+```
+
+Switch to a preset:
+
+```bash
+python -m lyre_agent.cli model switch echo
+python -m lyre_agent.cli model switch openai:gpt-4.1
+python -m lyre_agent.cli model switch openai:gpt-4.1-mini
+python -m lyre_agent.cli model switch openrouter:sonnet
+python -m lyre_agent.cli model switch local
+```
+
+Switch to any OpenAI-compatible model:
+
+```bash
+python -m lyre_agent.cli model switch llama-3.1-70b \
+  --provider openai-compatible \
+  --base-url http://localhost:8000/v1 \
+  --api-key-env LYRE_LOCAL_API_KEY
+```
+
+Model config is written to:
+
+```text
+~/.lyre-agent/config.json
+```
+
+Secrets stay outside config. Store API keys in environment variables, for example:
+
+```bash
+export OPENAI_API_KEY=...
+export OPENROUTER_API_KEY=...
+```
+
+The first implemented real provider is OpenAI-compatible Chat Completions. Tool calling will be layered on top of this provider in the runtime phase.
 
 ## Startup TUI
 
@@ -57,6 +110,7 @@ Interactive slash commands:
 ```text
 /help      show commands
 /status    show runtime status
+/model     show active model
 /tools     list tools
 /config    print resolved config
 /clear     clear terminal

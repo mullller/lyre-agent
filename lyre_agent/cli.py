@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import asdict
 import json
 import os
 import sys
 
 from lyre_agent import __version__
-from lyre_agent.config import load_config
+from lyre_agent.config import get_config_path, load_config
+from lyre_agent.models import apply_model_switch, list_model_presets
 from lyre_agent.runtime import AgentRuntime
 from lyre_agent.tools.registry import default_registry
 from lyre_agent.ui import build_startup_state, print_markdown, render_startup, render_status
@@ -22,6 +24,17 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("version", help="print version")
     sub.add_parser("config-show", help="print resolved config")
     sub.add_parser("tool-list", help="list available tools")
+
+    model = sub.add_parser("model", help="show, list or switch model")
+    model_sub = model.add_subparsers(dest="model_command")
+    model_sub.add_parser("show", help="show active model")
+    model_sub.add_parser("list", help="list model presets")
+    switch = model_sub.add_parser("switch", help="switch active model")
+    switch.add_argument("model", help="preset alias or raw model name")
+    switch.add_argument("--provider", default=None, help="provider override, e.g. openai-compatible")
+    switch.add_argument("--base-url", default=None, help="OpenAI-compatible base URL")
+    switch.add_argument("--api-key-env", default=None, help="environment variable containing API key")
+    switch.add_argument("--config", default=None, help="config path override")
 
     run = sub.add_parser("run", help="run a one-shot task")
     run.add_argument("prompt", nargs="+", help="task prompt")
@@ -39,12 +52,37 @@ def _print_help() -> None:
         """Available commands:
   /help      Show this help
   /status    Show runtime status
+  /model     Show active model
   /tools     List enabled tools
   /config    Print resolved config
   /clear     Clear the terminal
   /exit      Exit chat
 """.strip()
     )
+
+
+def _print_model(config_path: str | None = None) -> None:
+    cfg = load_config(config_path)
+    print(json.dumps({"model": asdict(cfg.model), "config_path": str(get_config_path(config_path))}, ensure_ascii=False, indent=2))
+
+
+def _list_models() -> None:
+    for preset in list_model_presets():
+        print(f"{preset.alias}\t{preset.provider}\t{preset.name}\t{preset.description}")
+
+
+def _switch_model(args) -> int:
+    cfg = load_config(args.config)
+    apply_model_switch(
+        cfg,
+        args.model,
+        provider=args.provider,
+        base_url=args.base_url,
+        api_key_env=args.api_key_env,
+        config_path=args.config,
+    )
+    _print_model(args.config)
+    return 0
 
 
 def _chat(cwd: str | None = None, show_banner: bool = True) -> int:
@@ -71,6 +109,9 @@ def _chat(cwd: str | None = None, show_banner: bool = True) -> int:
             continue
         if prompt == "/status":
             render_status(state)
+            continue
+        if prompt == "/model":
+            _print_model()
             continue
         if prompt == "/tools":
             for tool in registry.list():
@@ -104,6 +145,15 @@ def main(argv: list[str] | None = None) -> int:
         for tool in default_registry().list():
             print(f"{tool.name}\t{tool.description}")
         return 0
+    if args.command == "model":
+        if args.model_command in {None, "show"}:
+            _print_model()
+            return 0
+        if args.model_command == "list":
+            _list_models()
+            return 0
+        if args.model_command == "switch":
+            return _switch_model(args)
     if args.command == "run":
         prompt = " ".join(args.prompt)
         print(AgentRuntime().run(prompt, cwd=args.cwd))

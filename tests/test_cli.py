@@ -19,6 +19,14 @@ def test_tool_list(capsys):
     assert "read_file" in captured.out
 
 
+def test_model_list(capsys):
+    code = main(["model", "list"])
+    captured = capsys.readouterr()
+    assert code == 0
+    assert "echo" in captured.out
+    assert "openai:gpt-4.1" in captured.out
+
+
 def test_startup_state_contains_tools(tmp_path):
     state = build_startup_state(load_config(), default_registry(), cwd=str(tmp_path))
     assert state.version == "0.1.0"
