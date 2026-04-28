@@ -72,9 +72,59 @@ Interactive slash commands:
 - Provider-agnostic: OpenAI-compatible providers first, local models later.
 - Skill-driven: reusable workflows should be stored as markdown skills.
 
+## Design Inspiration: Hermes + OpenClaw
+
+Lyre Agent borrows from both Hermes Agent and OpenClaw, but keeps a narrower scope.
+
+**Positioning:**
+
+```text
+Lyre Agent = Hermes-style Runtime + OpenClaw-style Control Plane
+```
+
+From Hermes, Lyre Agent borrows:
+
+- tool-first agent loop
+- provider-agnostic LLM layer
+- skills as reusable workflows
+- persistent memory and session continuity
+- self-improving workflows through skill sedimentation
+
+From OpenClaw, Lyre Agent borrows:
+
+- gateway/channel abstraction
+- control-plane thinking
+- user/chat/task routing
+- permission model
+- approval flow and audit boundaries
+- stronger safety design around tools and execution
+
+Long-term layering:
+
+```text
+┌────────────────────────────────────────────┐
+│ OpenClaw-inspired Control Plane             │
+│ users · chats · channels · permissions      │
+│ routes · approvals · audit logs             │
+└──────────────────────┬─────────────────────┘
+                       │
+┌──────────────────────▼─────────────────────┐
+│ Lyre Agent Runtime                          │
+│ prompt builder · sessions · tool loop       │
+│ model provider · context management         │
+└──────────────────────┬─────────────────────┘
+                       │
+┌──────────────────────▼─────────────────────┐
+│ Hermes-inspired Capability Layer            │
+│ tools · skills · memory · workflows         │
+└────────────────────────────────────────────┘
+```
+
+Lyre Agent should not become a full clone of either system. The core should stay small and local-first, while platform gateways, control-plane policies and integrations remain optional layers.
+
 ## Architecture
 
-Lyre Agent follows a small-core, tool-first architecture inspired by Hermes Agent.
+Lyre Agent follows a small-core, tool-first architecture.
 
 The core runtime is responsible for:
 
@@ -347,17 +397,38 @@ Then all platforms share the same `AgentRuntime`.
 
 ## Roadmap
 
+### Phase 1: Hermes-style Runtime
+
 1. Add `paths.py` and profile-safe storage.
 2. Refactor tool registry toward Hermes-style registration metadata.
 3. Add `toolsets.py` and config-based enable/disable.
 4. Implement OpenAI-compatible LLM provider.
 5. Replace shortcut runtime with a real tool-calling loop.
-6. Add SQLite session store.
-7. Add memory store and retrieval.
-8. Add skill loader and matcher.
-9. Add stronger security approvals and workspace boundary checks.
-10. Add API server mode.
-11. Add Feishu/Telegram gateway adapters.
+6. Add prompt builder and context management.
+
+### Phase 2: Hermes-style Skills and Memory
+
+1. Add SQLite session store.
+2. Add memory store and retrieval.
+3. Add skill loader and matcher.
+4. Add workflow/skill sedimentation after successful complex tasks.
+5. Add session resume and conversation export.
+
+### Phase 3: OpenClaw-style Control Plane
+
+1. Add policy model for users, chats, workspaces and tools.
+2. Add approval flow for risky tool calls.
+3. Add audit logs for tool execution and file writes.
+4. Add gateway-independent `IncomingMessage` and `OutgoingMessage` models.
+5. Add routing rules for CLI/API/platform messages.
+
+### Phase 4: Platform Integrations
+
+1. Add API server mode.
+2. Add Feishu gateway adapter.
+3. Add Telegram gateway adapter.
+4. Add GitHub webhook/tooling adapter.
+5. Add optional MCP bridge.
 
 ## Current MVP status
 
