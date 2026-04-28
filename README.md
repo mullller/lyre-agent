@@ -1,3 +1,9 @@
+```text
+╦  ╦ ╦ ╦═╗ ╔═
+║  ╚╦╝ ╠╦╝ ╠═
+╩═╝ ╩  ╩╚═ ╚═
+```
+
 # lyre-agent
 
 Local-first CLI agent for developer workflows.
