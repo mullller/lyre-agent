@@ -16,19 +16,19 @@ python -m lyre_agent.cli chat
 
 ## Startup TUI
 
-Interactive mode uses a Rich-powered startup TUI:
+Interactive mode uses a compact Rich-powered startup TUI:
 
 ```bash
 python -m lyre_agent.cli
 python -m lyre_agent.cli chat
 ```
 
-It shows:
+It renders a modern status card with:
 
 - current profile
 - workspace
 - model provider/name
-- enabled tools
+- enabled tool chips
 - session status
 - safety mode
 - missing optional configuration warnings

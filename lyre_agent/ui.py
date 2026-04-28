@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 import os
-import shutil
 
 from lyre_agent import __version__
 from lyre_agent.config import AgentConfig
@@ -48,10 +47,15 @@ def _compact_path(path: str) -> str:
     return path
 
 
+def _tool_chips(tools: list[str]) -> str:
+    return "  ".join(f"[black on green] {name} [/black on green]" for name in tools)
+
+
 def render_startup(state: StartupState) -> None:
     try:
         from rich import box
-        from rich.console import Console
+        from rich.align import Align
+        from rich.console import Console, Group
         from rich.panel import Panel
         from rich.table import Table
         from rich.text import Text
@@ -60,63 +64,76 @@ def render_startup(state: StartupState) -> None:
         return
 
     console = Console()
-    width = shutil.get_terminal_size((80, 24)).columns
-    if width >= 74:
-        logo = Text(
-            "██╗     ██╗   ██╗██████╗ ███████╗\n"
-            "██║     ╚██╗ ██╔╝██╔══██╗██╔════╝\n"
-            "██║      ╚████╔╝ ██████╔╝█████╗  \n"
-            "██║       ╚██╔╝  ██╔══██╗██╔══╝  \n"
-            "███████╗   ██║   ██║  ██║███████╗\n"
-            "╚══════╝   ╚═╝   ╚═╝  ╚═╝╚══════╝",
-            style="bold cyan",
-        )
-        subtitle = Text("\nLocal-first CLI Agent for Developer Workflows", style="dim")
-        title = Text.assemble(logo, subtitle)
-    else:
-        title = Text.assemble(("LYRE", "bold cyan"), ("\nlocal-first developer agent", "dim"))
 
-    console.print(Panel(title, border_style="cyan", box=box.ROUNDED, padding=(1, 2)))
+    title = Text.assemble(
+        ("♪ ", "bold magenta"),
+        ("Lyre", "bold white"),
+        (" Agent", "bold cyan"),
+        (f"  v{state.version}", "dim"),
+    )
+    subtitle = Text("local-first developer agent", style="dim")
 
-    table = Table(show_header=False, box=box.SIMPLE_HEAVY, border_style="bright_black", pad_edge=False)
-    table.add_column("key", style="cyan", no_wrap=True)
-    table.add_column("value", style="white")
-    table.add_row("Version", state.version)
-    table.add_row("Profile", state.profile)
-    table.add_row("Workspace", _compact_path(state.workspace))
-    table.add_row("Model", state.model)
-    table.add_row("Tools", "  ".join(f"[green]{name} ✓[/green]" for name in state.tools))
-    table.add_row("Session", state.session)
-    table.add_row("Safety", f"[green]{state.safety}[/green]")
+    meta = Table.grid(expand=True)
+    meta.add_column(ratio=1)
+    meta.add_column(ratio=1)
+    meta.add_row(
+        f"[cyan]Workspace[/cyan]\n[white]{_compact_path(state.workspace)}[/white]",
+        f"[cyan]Model[/cyan]\n[white]{state.model}[/white]",
+    )
+    meta.add_row(
+        f"[cyan]Profile[/cyan]\n[white]{state.profile}[/white]",
+        f"[cyan]Session[/cyan]\n[white]{state.session}[/white]",
+    )
+    meta.add_row(
+        f"[cyan]Safety[/cyan]\n[green]{state.safety}[/green]",
+        f"[cyan]Tools[/cyan]\n{_tool_chips(state.tools)}",
+    )
+
+    body_items = [
+        Align.left(title),
+        Align.left(subtitle),
+        "",
+        meta,
+    ]
     if state.warnings:
-        table.add_row("Warnings", "  ".join(f"[yellow]! {item}[/yellow]" for item in state.warnings))
-    console.print(table)
-    console.print("[dim]Type /help for commands, /status for details, /exit to quit.[/dim]\n")
+        body_items.extend(["", "\n".join(f"[yellow]⚠ {warning}[/yellow]" for warning in state.warnings)])
+
+    panel = Panel(
+        Group(*body_items),
+        title="[dim]startup[/dim]",
+        subtitle="[dim]/help commands · /status details · /exit quit[/dim]",
+        border_style="magenta",
+        box=box.ROUNDED,
+        padding=(1, 2),
+    )
+    console.print(panel)
 
 
 def render_plain_startup(state: StartupState) -> None:
-    print(f"Lyre Agent {state.version}")
-    print("Local-first CLI Agent for Developer Workflows\n")
-    print(f"Profile:   {state.profile}")
+    print(f"♪ Lyre Agent v{state.version}")
+    print("local-first developer agent\n")
     print(f"Workspace: {_compact_path(state.workspace)}")
     print(f"Model:     {state.model}")
-    print(f"Tools:     {', '.join(state.tools)}")
+    print(f"Profile:   {state.profile}")
     print(f"Session:   {state.session}")
     print(f"Safety:    {state.safety}")
+    print(f"Tools:     {', '.join(state.tools)}")
     for warning in state.warnings:
         print(f"Warning:   {warning}")
-    print("\nType /help for commands, /status for details, /exit to quit.\n")
+    print("\n/help commands · /status details · /exit quit\n")
 
 
 def render_status(state: StartupState) -> None:
     try:
+        from rich import box
         from rich.console import Console
+        from rich.panel import Panel
         from rich.table import Table
     except Exception:
         render_plain_startup(state)
         return
 
-    table = Table(title="Lyre Status", show_lines=False)
+    table = Table(show_header=False, box=None, pad_edge=False)
     table.add_column("Field", style="cyan", no_wrap=True)
     table.add_column("Value")
     table.add_row("Version", state.version)
@@ -127,7 +144,7 @@ def render_status(state: StartupState) -> None:
     table.add_row("Session", state.session)
     table.add_row("Safety", state.safety)
     table.add_row("Warnings", ", ".join(state.warnings) if state.warnings else "none")
-    Console().print(table)
+    Console().print(Panel(table, title="[bold cyan]Lyre Status[/bold cyan]", border_style="cyan", box=box.ROUNDED))
 
 
 def print_markdown(text: str) -> None:
