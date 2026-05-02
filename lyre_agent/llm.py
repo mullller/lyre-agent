@@ -85,7 +85,21 @@ class OpenAICompatibleProvider:
         choice = ((data or {}).get("choices") or [{}])[0]
         message = choice.get("message") or {}
         content = message.get("content") or ""
-        return LLMResponse(content=content)
+        tool_calls = []
+        for raw_call in message.get("tool_calls") or []:
+            function = raw_call.get("function") or {}
+            name = function.get("name")
+            if not name:
+                continue
+            raw_arguments = function.get("arguments") or "{}"
+            try:
+                arguments = json.loads(raw_arguments) if isinstance(raw_arguments, str) else raw_arguments
+            except json.JSONDecodeError:
+                arguments = {"raw_arguments": raw_arguments}
+            if not isinstance(arguments, dict):
+                arguments = {"value": arguments}
+            tool_calls.append(ToolCall(name=name, arguments=arguments))
+        return LLMResponse(content=content, tool_calls=tool_calls)
 
 
 class AnthropicProvider:
@@ -146,7 +160,18 @@ class AnthropicProvider:
 
         content_blocks = (data or {}).get("content") or []
         text_parts = [block.get("text", "") for block in content_blocks if block.get("type") == "text"]
-        return LLMResponse(content="".join(text_parts))
+        tool_calls = []
+        for block in content_blocks:
+            if block.get("type") != "tool_use":
+                continue
+            name = block.get("name")
+            if not name:
+                continue
+            arguments = block.get("input") or {}
+            if not isinstance(arguments, dict):
+                arguments = {"value": arguments}
+            tool_calls.append(ToolCall(name=name, arguments=arguments))
+        return LLMResponse(content="".join(text_parts), tool_calls=tool_calls)
 
 
 def provider_from_config(config: ModelConfig):

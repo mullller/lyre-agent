@@ -5,6 +5,17 @@ from lyre_agent.llm import provider_from_config
 from lyre_agent.tools.registry import ToolRegistry, default_registry
 
 
+def _tool_schema(tool) -> dict:
+    return {
+        "type": "function",
+        "function": {
+            "name": tool.name,
+            "description": tool.description,
+            "parameters": tool.input_schema,
+        },
+    }
+
+
 class AgentRuntime:
     def __init__(self, config: AgentConfig | None = None, tools: ToolRegistry | None = None):
         self.config = config or load_config()
@@ -28,5 +39,18 @@ class AgentRuntime:
         if "git diff" in lower or "diff" in lower:
             result = self.tools.get("git_diff").run(cwd=workdir)
             return result.as_text() or "No diff."
-        response = self.llm.complete([{"role": "user", "content": prompt}])
-        return response.content
+        messages = [{"role": "user", "content": prompt}]
+        tool_schemas = [_tool_schema(tool) for tool in self.tools.list()]
+        for _ in range(self.config.max_iterations):
+            response = self.llm.complete(messages, tools=tool_schemas)
+            if not response.tool_calls:
+                return response.content
+            for tool_call in response.tool_calls:
+                try:
+                    tool = self.tools.get(tool_call.name)
+                    result = tool.run(**tool_call.arguments)
+                    content = result.as_text()
+                except Exception as exc:
+                    content = f"Tool {tool_call.name} failed: {type(exc).__name__}: {exc}"
+                messages.append({"role": "tool", "name": tool_call.name, "content": content})
+        return "Agent stopped: max_iterations reached while processing tool calls."

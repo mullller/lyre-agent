@@ -261,7 +261,7 @@ Recommended recurring maintenance:
 2. Hermes-style tool registry metadata
 3. `toolsets.py`
 4. model providers: OpenAI-compatible and Anthropic Messages API
-5. real tool-calling loop
+5. real tool-calling loop (initial provider tool-call parsing and runtime execution implemented)
 6. prompt builder
 
 ### Phase 2: Skills and Memory

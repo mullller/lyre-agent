@@ -102,7 +102,7 @@ Implemented real providers:
 - OpenAI-compatible Chat Completions: `provider=openai-compatible`
 - Anthropic Messages API: `provider=anthropic`
 
-Tool calling will be layered on top of these providers in the runtime phase.
+The runtime can pass registered tool schemas to model providers, execute returned tool calls, append tool results, and continue until the provider returns a final answer.
 
 ## Startup TUI
 
