@@ -5,6 +5,8 @@ from pathlib import Path
 import json
 import os
 
+from lyre_agent.paths import get_paths
+
 
 @dataclass(slots=True)
 class ModelConfig:
@@ -45,7 +47,12 @@ class AgentConfig:
 
 
 def get_config_path(path: str | None = None) -> Path:
-    return Path(path or os.environ.get("LYRE_AGENT_CONFIG", "~/.lyre-agent/config.json")).expanduser()
+    if path:
+        return Path(path).expanduser()
+    env_path = os.environ.get("LYRE_AGENT_CONFIG")
+    if env_path:
+        return Path(env_path).expanduser()
+    return get_paths().config_file
 
 
 def _merge_dataclass(obj, data: dict):
